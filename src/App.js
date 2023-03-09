@@ -1,9 +1,8 @@
-import logo from "./logo.svg";
 import images from "./USA.json";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { app } from "./firebase";
-import { getDatabase, ref, set, onValue } from "firebase/database";
+import { getDatabase, ref, set, get } from "firebase/database";
 
 const SectionContainer = styled.div`
 	width: 100%;
@@ -54,6 +53,8 @@ const YearInput = styled.input`
 	width: 50%;
 	transform: scale(2);
 	transform-origin: 50% 0;
+	background-color: white;
+	color: "white";
 `;
 
 const GuessButton = styled.button`
@@ -192,19 +193,22 @@ function App() {
 			.replaceAll("$", "")
 			.replaceAll("#", "");
 		const imageRef = ref(db, "images/" + temp);
-		let data = {};
-		onValue(imageRef, (snapshot) => {
-			data = snapshot.val();
-			setResultData(data);
+		get(imageRef).then((snapshot) => {
+			if (snapshot.exists()) {
+				let data = snapshot.val();
+				data[guessYear] = (data[guessYear] || 0) + 1;
+				set(imageRef, data);
+				setResultData(data);
+			} else {
+				set(imageRef, {
+					[guessYear]: 1,
+				});
+				setResultData({
+					[guessYear]: 1,
+				});
+			}
+			console.log(snapshot.val());
 		});
-		if (!data) {
-			set(imageRef, {
-				[guessYear]: 1,
-			});
-		} else {
-			data[guessYear] = (data[guessYear] || 0) + 1;
-			set(imageRef, data);
-		}
 	}
 
 	useEffect(() => {
@@ -266,7 +270,11 @@ function App() {
 						{rangeArray(1900, 2015, width < 900 ? 23 : 5).map(
 							(x) => (
 								<option
-									style={{ padding: "0", marginTop: "4vh" }}
+									style={{
+										padding: "0",
+										marginTop: "4vh",
+										color: "white",
+									}}
 									label={x}
 									value={x}
 								>
