@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { app } from "./firebase";
 import { getDatabase, ref, set, get } from "firebase/database";
+import Home from "./Home";
 
 const SectionContainer = styled.div`
   width: 100%;
@@ -230,6 +231,7 @@ function App() {
         backgroundColor: darkMode ? "#1e1e1e" : "white",
       }}
     >
+      <Home></Home>
       <GameContainer>
         <ImgContainer>
           <CenterImage src={images[yearNum][imgNum]} />
