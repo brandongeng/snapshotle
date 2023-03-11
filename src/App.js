@@ -179,19 +179,61 @@ function App() {
   const [feedback, setFeedback] = useState("");
   const [imageSet, setImageSet] = useState(images);
   const [nl, setNl] = useState(false);
+  const [dailyCount, setDailyCount] = useState(() => {
+    if (
+      localStorage.getItem("date") === null ||
+      localStorage.getItem("daily") === null
+    ) {
+      return 0;
+    } else if (
+      localStorage.getItem("date") ===
+      changeTimeZone(new Date(), "America/New_York")
+    ) {
+      return parseInt(localStorage.getItem("daily"));
+    } else {
+      return 0;
+    }
+  });
+  const [dailyImages, setDailyImages] = useState([]);
 
   const { height, width } = useWindowDimensions();
+  let seedrandom = require("seedrandom");
+  let rng = new seedrandom(changeTimeZone(new Date(), "America/New_York"));
 
   const db = getDatabase();
 
+  function changeTimeZone(date, timeZone) {
+    if (typeof date === "string") {
+      return new Date(
+        new Date(date).toLocaleString("en-US", {
+          timeZone,
+        })
+      );
+    }
+
+    return new Date(
+      date.toLocaleString("en-US", {
+        timeZone,
+      })
+    ).toDateString();
+  }
+
   function randomImage() {
+    console.log();
     if (!nl) {
-      let randomYear = Math.floor(Math.random() * 116) + 1900;
-      setYearNum(randomYear);
-      let randomNum = Math.floor(Math.random() * imageSet[randomYear].length);
-      setImgNum(randomNum);
+      if (dailyCount < 5) {
+        if (dailyImages.length) {
+          setYearNum(dailyImages[dailyCount][0]);
+          setImgNum(dailyImages[dailyCount][1]);
+        }
+      } else {
+        let randomYear = Math.floor(Math.random() * 116) + 1900;
+        setYearNum(randomYear);
+        let randomNum = Math.floor(Math.random() * imageSet[randomYear].length);
+        setImgNum(randomNum);
+      }
     } else {
-      let randomYear = Math.floor(Math.random() * 9) + 2013;
+      let randomYear = Math.floor(Math.random() * 9) + 2010;
       setYearNum(randomYear);
       let randomNum = Math.floor(Math.random() * imageSet[randomYear].length);
       setImgNum(randomNum);
@@ -227,12 +269,26 @@ function App() {
     setYearNum(0);
     setNl(true);
     setImageSet(nlImages);
-    setGuessYear(2017);
+    setGuessYear(2016);
   }
 
   useEffect(() => {
     randomImage();
-  }, [nl]);
+  }, [nl, dailyImages, dailyCount]);
+
+  useEffect(() => {
+    let toAppend = [];
+    for (let i = 0; i < 5; i++) {
+      let randomYear = Math.floor(rng() * 116) + 1900;
+      let randomNum = Math.floor(rng() * imageSet[randomYear].length);
+      toAppend.push([randomYear, randomNum]);
+    }
+    setDailyImages([...dailyImages, ...toAppend]);
+    localStorage.setItem(
+      "date",
+      String(changeTimeZone(new Date(), "America/New_York"))
+    );
+  }, []);
 
   useEffect(() => {
     window.scroll({
@@ -255,7 +311,7 @@ function App() {
               style={{ display: width > 900 ? "none" : "flex" }}
               onClick={() => {
                 if (!nl && guessYear !== 1900) setGuessYear(guessYear - 1);
-                if (nl && guessYear !== 2013) setGuessYear(guessYear - 1);
+                if (nl && guessYear !== 2010) setGuessYear(guessYear - 1);
               }}
             >
               <h1>-</h1>
@@ -265,7 +321,7 @@ function App() {
               style={{ display: width > 900 ? "none" : "flex" }}
               onClick={() => {
                 if (!nl && guessYear !== 2015) setGuessYear(guessYear + 1);
-                if (nl && guessYear !== 2021) setGuessYear(guessYear + 1);
+                if (nl && guessYear !== 2022) setGuessYear(guessYear + 1);
               }}
             >
               <h1>+</h1>
@@ -273,8 +329,8 @@ function App() {
           </AdjustContainer>
           <YearInput
             type="range"
-            min={!nl ? "1900" : "2013"}
-            max={!nl ? "2015" : "2021"}
+            min={!nl ? "1900" : "2010"}
+            max={!nl ? "2015" : "2022"}
             value={guessYear}
             disabled={showResult}
             onChange={(e) => setGuessYear(e.target.value)}
@@ -293,7 +349,7 @@ function App() {
                     label={x}
                   ></option>
                 ))
-              : rangeArray(2013, 2021, 1).map((x) => (
+              : rangeArray(2010, 2022, 1).map((x) => (
                   <option
                     style={{
                       padding: "0",
@@ -314,6 +370,9 @@ function App() {
           >
             <h1>Guess</h1>
           </GuessButton>
+          <p style={{ display: dailyCount >= 5 ? "none" : "block" }}>
+            This image is part of today's daily challenge
+          </p>
         </GuessContainer>
       </GameContainer>
       <ResultsContainer style={{ display: showResult ? "flex" : "none" }}>
@@ -350,11 +409,11 @@ function App() {
                   />
                 );
               })
-            : rangeArray(2013, 2021, 1).map(function (x) {
+            : rangeArray(2010, 2022, 1).map(function (x) {
                 let z = 0;
                 let max = Math.max(...Object.values(resultData));
                 let min = 0;
-                if (Object.values(resultData).length === 9)
+                if (Object.values(resultData).length === 13)
                   min = Math.min(...Object.values(resultData));
                 if (x in resultData) {
                   z = (resultData[x] - min) / (max - min);
@@ -376,12 +435,14 @@ function App() {
                 );
               })}
         </HistogramContainer>
-        <HistogramYearContainer>
+        <HistogramYearContainer
+          style={{ justifyContent: nl ? "space-around" : "space-between" }}
+        >
           {!nl
             ? rangeArray(1900, 2015, width < 900 ? 23 : 5).map(function (x) {
                 return <p>{x}</p>;
               })
-            : rangeArray(2013, 2021, 1).map(function (x) {
+            : rangeArray(2010, 2022, 1).map(function (x) {
                 return <p>{x}</p>;
               })}
         </HistogramYearContainer>
@@ -389,8 +450,13 @@ function App() {
           onClick={() => {
             randomImage();
             setShowResult(false);
-            if (!nl) setGuessYear(1958);
-            else setGuessYear(2017);
+            if (!nl) {
+              setGuessYear(1958);
+              if (dailyCount < 5) {
+                localStorage.setItem("daily", parseInt(dailyCount) + 1);
+                setDailyCount(dailyCount + 1);
+              }
+            } else setGuessYear(2016);
           }}
         >
           <h1>Next Image</h1>
