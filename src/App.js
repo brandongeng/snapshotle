@@ -1,4 +1,5 @@
 import images from "./USA.json";
+import nlImages from "./nl.json";
 import { useEffect, useState } from "react";
 import styled from "styled-components";
 import { app } from "./firebase";
@@ -15,6 +16,8 @@ const SectionContainer = styled.div`
   max-width: 100vw;
   overflow-x: hidden;
   min-height: 100vh;
+  color: white;
+  background-color: #1e1e1e;
 `;
 
 const GameContainer = styled.div`
@@ -168,27 +171,35 @@ function useWindowDimensions() {
 
 function App() {
   const [imgNum, setImgNum] = useState(0);
-  const [yearNum, setYearNum] = useState(1918);
+  const [yearNum, setYearNum] = useState(0);
   const [guessYear, setGuessYear] = useState(1958);
   const [showResult, setShowResult] = useState(false);
   const [resultData, setResultData] = useState({});
   const [openFeedback, setOpenFeedback] = useState(false);
   const [feedback, setFeedback] = useState("");
-  const [darkMode, setDarkMode] = useState(true);
+  const [imageSet, setImageSet] = useState(images);
+  const [nl, setNl] = useState(false);
 
   const { height, width } = useWindowDimensions();
 
   const db = getDatabase();
 
   function randomImage() {
-    let randomYear = Math.floor(Math.random() * 116) + 1900;
-    setYearNum(randomYear);
-    let randomNum = Math.floor(Math.random() * images[randomYear].length);
-    setImgNum(randomNum);
+    if (!nl) {
+      let randomYear = Math.floor(Math.random() * 116) + 1900;
+      setYearNum(randomYear);
+      let randomNum = Math.floor(Math.random() * imageSet[randomYear].length);
+      setImgNum(randomNum);
+    } else {
+      let randomYear = Math.floor(Math.random() * 9) + 2013;
+      setYearNum(randomYear);
+      let randomNum = Math.floor(Math.random() * imageSet[randomYear].length);
+      setImgNum(randomNum);
+    }
   }
 
   function saveGuess() {
-    let temp = images[yearNum][imgNum]
+    let temp = imageSet[yearNum][imgNum]
       .replaceAll("/", "")
       .replaceAll(".", "")
       .replaceAll("$", "")
@@ -208,13 +219,20 @@ function App() {
           [guessYear]: 1,
         });
       }
-      console.log(snapshot.val());
     });
+  }
+
+  function nlModeOn() {
+    setImgNum(0);
+    setYearNum(0);
+    setNl(true);
+    setImageSet(nlImages);
+    setGuessYear(2017);
   }
 
   useEffect(() => {
     randomImage();
-  }, []);
+  }, [nl]);
 
   useEffect(() => {
     window.scroll({
@@ -225,23 +243,19 @@ function App() {
   }, [showResult]);
 
   return (
-    <SectionContainer
-      style={{
-        color: darkMode ? "white" : "black",
-        backgroundColor: darkMode ? "#1e1e1e" : "white",
-      }}
-    >
-      <Home></Home>
+    <SectionContainer>
+      <Home nl={nlModeOn}></Home>
       <GameContainer>
         <ImgContainer>
-          <CenterImage src={images[yearNum][imgNum]} />
+          <CenterImage src={imageSet[yearNum][imgNum]} />
         </ImgContainer>
         <GuessContainer>
           <AdjustContainer>
             <AdjustButton
               style={{ display: width > 900 ? "none" : "flex" }}
               onClick={() => {
-                if (guessYear !== 1900) setGuessYear(guessYear - 1);
+                if (!nl && guessYear !== 1900) setGuessYear(guessYear - 1);
+                if (nl && guessYear !== 2013) setGuessYear(guessYear - 1);
               }}
             >
               <h1>-</h1>
@@ -250,7 +264,8 @@ function App() {
             <AdjustButton
               style={{ display: width > 900 ? "none" : "flex" }}
               onClick={() => {
-                if (guessYear !== 2015) setGuessYear(Number(guessYear) + 1);
+                if (!nl && guessYear !== 2015) setGuessYear(guessYear + 1);
+                if (nl && guessYear !== 2021) setGuessYear(guessYear + 1);
               }}
             >
               <h1>+</h1>
@@ -258,8 +273,8 @@ function App() {
           </AdjustContainer>
           <YearInput
             type="range"
-            min="1900"
-            max="2015"
+            min={!nl ? "1900" : "2013"}
+            max={!nl ? "2015" : "2021"}
             value={guessYear}
             disabled={showResult}
             onChange={(e) => setGuessYear(e.target.value)}
@@ -267,20 +282,27 @@ function App() {
             step="1"
           />
           <YearDatalist id="stepList">
-            {rangeArray(1900, 2015, width < 900 ? 23 : 5).map((x) => (
-              <option
-                style={{
-                  padding: "0",
-                  marginTop: "4vh",
-                  color: "white",
-                  MozUserSelect: "-moz-none",
-                  WebkitUserSelect: "none",
-                  msUserSelect: "none",
-                  userSelect: "none",
-                }}
-                label={x}
-              ></option>
-            ))}
+            {!nl
+              ? rangeArray(1900, 2015, width < 900 ? 23 : 5).map((x) => (
+                  <option
+                    style={{
+                      padding: "0",
+                      marginTop: "4vh",
+                      color: "white",
+                    }}
+                    label={x}
+                  ></option>
+                ))
+              : rangeArray(2013, 2021, 1).map((x) => (
+                  <option
+                    style={{
+                      padding: "0",
+                      marginTop: "4vh",
+                      color: "white",
+                    }}
+                    label={x}
+                  ></option>
+                ))}
           </YearDatalist>
           <GuessButton
             onClick={() => {
@@ -302,41 +324,73 @@ function App() {
         </h2>
         <br />
         <HistogramContainer>
-          {rangeArray(1900, 2015, 1).map(function (x) {
-            let z = 0;
-            let max = Math.max(...Object.values(resultData));
-            let min = 0;
-            if (Object.values(resultData).length === 115)
-              min = Math.min(...Object.values(resultData));
-            if (x in resultData) {
-              z = (resultData[x] - min) / (max - min);
-            }
-            return (
-              <Bar
-                style={{
-                  height: `${z * 100}%`,
-                  backgroundColor: x === Number(guessYear) ? "blue" : "grey",
-                  border:
-                    x === Number(yearNum)
-                      ? x === Number(guessYear)
-                        ? "solid green 5px"
-                        : "solid green 2px"
-                      : "none",
-                }}
-              />
-            );
-          })}
+          {!nl
+            ? rangeArray(1900, 2015, 1).map(function (x) {
+                let z = 0;
+                let max = Math.max(...Object.values(resultData));
+                let min = 0;
+                if (Object.values(resultData).length === 115)
+                  min = Math.min(...Object.values(resultData));
+                if (x in resultData) {
+                  z = (resultData[x] - min) / (max - min);
+                }
+                return (
+                  <Bar
+                    style={{
+                      height: `${z * 100}%`,
+                      backgroundColor:
+                        x === Number(guessYear) ? "blue" : "grey",
+                      border:
+                        x === Number(yearNum)
+                          ? x === Number(guessYear)
+                            ? "solid green 5px"
+                            : "solid green 2px"
+                          : "none",
+                    }}
+                  />
+                );
+              })
+            : rangeArray(2013, 2021, 1).map(function (x) {
+                let z = 0;
+                let max = Math.max(...Object.values(resultData));
+                let min = 0;
+                if (Object.values(resultData).length === 9)
+                  min = Math.min(...Object.values(resultData));
+                if (x in resultData) {
+                  z = (resultData[x] - min) / (max - min);
+                }
+                return (
+                  <Bar
+                    style={{
+                      height: `${z * 100}%`,
+                      backgroundColor:
+                        x === Number(guessYear) ? "blue" : "grey",
+                      border:
+                        x === Number(yearNum)
+                          ? x === Number(guessYear)
+                            ? "solid green 5px"
+                            : "solid green 2px"
+                          : "none",
+                    }}
+                  />
+                );
+              })}
         </HistogramContainer>
         <HistogramYearContainer>
-          {rangeArray(1900, 2015, width < 900 ? 23 : 5).map(function (x) {
-            return <p>{x}</p>;
-          })}
+          {!nl
+            ? rangeArray(1900, 2015, width < 900 ? 23 : 5).map(function (x) {
+                return <p>{x}</p>;
+              })
+            : rangeArray(2013, 2021, 1).map(function (x) {
+                return <p>{x}</p>;
+              })}
         </HistogramYearContainer>
         <GuessButton
           onClick={() => {
             randomImage();
             setShowResult(false);
-            setGuessYear(1958);
+            if (!nl) setGuessYear(1958);
+            else setGuessYear(2017);
           }}
         >
           <h1>Next Image</h1>
@@ -346,7 +400,7 @@ function App() {
           <span
             style={{
               textDecoration: "underline",
-              color: "blue",
+              color: "teal",
               cursor: "pointer",
             }}
             onClick={() => {

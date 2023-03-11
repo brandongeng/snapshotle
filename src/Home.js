@@ -70,12 +70,14 @@ function rangeArray(start, end, mod) {
   return arr;
 }
 
-function Home() {
+function Home({ nl }) {
   const [home, setHome] = useState(true);
   return (
     <SectionContainer style={{ display: home ? "flex" : "none" }}>
       <TranslucentContainer>
-        <h1 style={{ fontSize: "10vw", margin: "2vmax" }}>Snapshotle</h1>
+        <h1 style={{ fontSize: "10vw", margin: "2vmax", marginTop: "0" }}>
+          Snapshotle
+        </h1>
         <h1 style={{ margin: "2vmax", textAlign: "center" }}>
           See The Image, Guess The Year, Beat The Average
         </h1>
@@ -87,6 +89,19 @@ function Home() {
         >
           <h1>Play</h1>
         </GuessButton>
+        <p
+          style={{
+            textDecoration: "underline",
+            color: "white",
+            cursor: "pointer",
+          }}
+          onClick={() => {
+            setHome(false);
+            nl();
+          }}
+        >
+          Play Northernlion Mode
+        </p>
       </TranslucentContainer>
       <StreamContainer>
         {rangeArray(0, 5, 1).map(function (x) {
